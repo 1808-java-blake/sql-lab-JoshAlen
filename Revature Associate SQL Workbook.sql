@@ -55,38 +55,106 @@ SELECT * FROM invoice WHERE total BETWEEN 15 AND 50;
 SELECT * FROM employee WHERE hiredate BETWEEN '2003/06/01' AND '2004/03/01';
 
 --2.7 DELETE
-Task – Delete a record in Customer table where the name is Robert Walter (There may be constraints that rely on this, find out how to resolve them).
+--Task – Delete a record in Customer table where the name is Robert Walter (There may be constraints that rely on this, find out how to resolve them).
 
 
 
 --SQL Functions
-In this section you will be using the Oracle system functions, as well as your own functions, to perform various actions against the database
-3.1 System Defined Functions
-Task – Create a function that returns the current time.
-Task – create a function that returns the length of a mediatype from the mediatype table
-3.2 System Defined Aggregate Functions
-Task – Create a function that returns the average total of all invoices
-Task – Create a function that returns the most expensive track
-3.3 User Defined Scalar Functions
-Task – Create a function that returns the average price of invoiceline items in the invoiceline table
-3.4 User Defined Table Valued Functions
-Task – Create a function that returns all employees who are born after 1968.
+--In this section you will be using the Oracle system functions, as well as your own functions, to perform various actions against the database
+--3.1 System Defined Functions
+--Task – Create a function that returns the current time.
+CREATE OR REPLACE FUNCTION curr_time()
+RETURNS text AS $$
+	BEGIN 
+	RETURN CURRENT_TIME;
+	END;
+$$ LANGUAGE plpgsql
 
-4.0 Stored Procedures
- In this section you will be creating and executing stored procedures. You will be creating various types of stored procedures that take input and output parameters.
-4.1 Basic Stored Procedure
-Task – Create a stored procedure that selects the first and last names of all the employees.
-4.2 Stored Procedure Input Parameters
-Task – Create a stored procedure that updates the personal information of an employee.
-Task – Create a stored procedure that returns the managers of an employee.
-4.3 Stored Procedure Output Parameters
+--Task – create a function that returns the length of a mediatype from the mediatype table
+CREATE OR REPLACE FUNCTION mediatype_length()
+	RETURNS integer AS $len$
+	DECLARE len integer;
+	BEGIN
+		SELECT COUNT(mediatype) INTO len FROM mediatype;
+		RETURN len;
+	END;
+	$len$ LANGUAGE plpgsql
+
+--3.2 System Defined Aggregate Functions
+--Task – Create a function that returns the average total of all invoices
+CREATE OR REPLACE FUNCTION invoice_total_avg()
+	RETURNS float AS $total_avg$
+	DECLARE total_avg float;
+	BEGIN
+		SELECT AVG(total) INTO total_avg FROM invoice;
+		RETURN total_avg;
+	END;
+	$total_avg$ LANGUAGE plpgsql
+
+--Task – Create a function that returns the most expensive track
+CREATE OR REPLACE FUNCTION most_expensive_track()
+		RETURNS float AS $et$
+		DECLARE et float;
+		BEGIN
+			SELECT MAX(unitprice) INTO et FROM track;
+			RETURN et;
+		END;
+		$et$ LANGUAGE plpgsql
+
+
+--3.3 User Defined Scalar Functions
+--Task – Create a function that returns the average price of invoiceline items in the invoiceline table
+CREATE OR REPLACE FUNCTION invoiceline()
+	RETURN integer as $a$
+	DECLARE a integer;
+	BEGIN
+		SELECT AVG(unitprice) INTO a FROM invoiceline;
+		RETURN a; 
+	END;
+	$a$ LANGUAGE plpgsql
+
+--3.4 User Defined Table Valued Functions
+--Task – Create a function that returns all employees who are born after 1968.
+CREATE OR REPLACE FUNCTION born_after_1968()
+	RETURNS Table (firstname VARCHAR, birthdate TIMESTAMP ) as $x$
+	BEGIN
+		RETURN QUERY SELECT firstname, birthdate FROM employee WHERE birthdate >= '1969-01-01';
+	END;
+	$x$ LANGUAGE plpgsql
+
+--4.0 Stored Procedures
+--In this section you will be creating and executing stored procedures. You will be creating various types of stored procedures that take input and output parameters.
+--4.1 Basic Stored Procedure
+--Task – Create a stored procedure that selects the first and last names of all the employees.
+CREATE OR REPLACE FUNCTION employee_fullname()
+    RETURNS TABLE ( firstname VARCHAR, lastname VARCHAR) as $x$
+    BEGIN
+        RETURN QUERY SELECT employee.firstname, employee.lastname FROM employee;
+    END;
+    $x$ LANGUAGE plpgsql;
+
+--4.2 Stored Procedure Input Parameters
+--Task – Create a stored procedure that returns the managers of an employee.
+CREATE FUNCTION managers_employee()
+    RETURNS void as $$
+        BEGIN
+            UPDATE employee SET firstname = 'Josh' WHERE employeeid = 10;
+        END;
+        $$ LANGUAGE plpgsql;
+
+--4.3 Stored Procedure Output Parameters
 Task – Create a stored procedure that returns the name and company of a customer.
+
+
+
 5.0 Transactions
 In this section you will be working with transactions. Transactions are usually nested within a stored procedure. You will also be working with handling errors in your SQL.
 Task – Create a transaction that given a invoiceId will delete that invoice (There may be constraints that rely on this, find out how to resolve them).
 Task – Create a transaction nested within a stored procedure that inserts a new record in the Customer table
+
 6.0 Triggers
 In this section you will create various kinds of triggers that work when certain DML statements are executed on a table.
+
 6.1 AFTER/FOR
 Task - Create an after insert trigger on the employee table fired after a new record is inserted into the table.
 Task – Create an after update trigger on the album table that fires after a row is inserted in the table
@@ -95,6 +163,7 @@ Task – Create an after delete trigger on the customer table that fires after a
 
 6.2 INSTEAD OF
 Task – Create an instead of trigger that restricts the deletion of any invoice that is priced over 50 dollars.
+
 
 --7.0 JOINS
 --In this section you will be working with combing various tables through the use of joins. You will work with outer, inner, right, left, cross, and self joins.

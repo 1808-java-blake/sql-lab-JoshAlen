@@ -56,8 +56,26 @@ SELECT * FROM employee WHERE hiredate BETWEEN '2003/06/01' AND '2004/03/01';
 
 --2.7 DELETE
 --Task – Delete a record in Customer table where the name is Robert Walter (There may be constraints that rely on this, find out how to resolve them).
+ALTER TABLE invoice
+drop CONSTRAINT fk_invoicecustomerid
+
+ALTER TABLE invoice
+ADD CONSTRAINT fk_invoicecustomerid
+    FOREIGN KEY (customerid)
+    REFERENCES customer (customerid)
+    ON DELETE CASCADE ON UPDATE NO ACTION
+
+ALTER TABLE invoiceline
+drop CONSTRAINT fk_invoicelineinvoiceid
 
 
+ALTER TABLE invoiceline
+ADD CONSTRAINT fk_invoicelineinvoiceid
+	FOREIGN KEY (invoiceid)
+	REFERENCES invoice (invoiceid)
+	ON DELETE CASCADE ON UPDATE NO ACTION
+
+delete from customer where firstname = 'Robert' and lastname='Walter';
 
 --SQL Functions
 --In this section you will be using the Oracle system functions, as well as your own functions, to perform various actions against the database
@@ -116,9 +134,9 @@ CREATE OR REPLACE FUNCTION invoiceline()
 --3.4 User Defined Table Valued Functions
 --Task – Create a function that returns all employees who are born after 1968.
 CREATE OR REPLACE FUNCTION born_after_1968()
-	RETURNS Table (firstname VARCHAR, birthdate TIMESTAMP ) as $x$
+	RETURNS Table (firstname VARCHAR, lastname VARCHAR, birthdate TIMESTAMP ) as $x$
 	BEGIN
-		RETURN QUERY SELECT firstname, birthdate FROM employee WHERE birthdate >= '1969-01-01';
+		RETURN QUERY SELECT firstname, lastname, birthdate FROM employee WHERE birthdate >= '1969-01-01';
 	END;
 	$x$ LANGUAGE plpgsql
 
@@ -131,43 +149,73 @@ CREATE OR REPLACE FUNCTION employee_fullname()
     BEGIN
         RETURN QUERY SELECT employee.firstname, employee.lastname FROM employee;
     END;
-    $x$ LANGUAGE plpgsql;
+    $x$ LANGUAGE plpgsql
 
 --4.2 Stored Procedure Input Parameters
---Task – Create a stored procedure that returns the managers of an employee.
-CREATE FUNCTION managers_employee()
+--Task - Create a stored procedure that updates the personal information of an employee.
+CREATE OR REPLACE FUNCTION managers_employee()
     RETURNS void as $$
         BEGIN
             UPDATE employee SET firstname = 'Josh' WHERE employeeid = 10;
         END;
-        $$ LANGUAGE plpgsql;
+        $$ LANGUAGE plpgsql
+
+--Task – Create a stored procedure that returns the managers of an employee.
+CREATE OR REPLACE FUNCTION managers_employee(managers integer)
+	RETURNS TABLE (firstname VARCHAR, lastname VARCHAR) as $x$
+	BEGIN
+		RETURN QUERY SELECT employee.firstname, employee.lastname FROM employee 
+			WHERE employee.employeeid =  managers;
+		END;
+		$x$ LANGUAGE plpgsql
 
 --4.3 Stored Procedure Output Parameters
-Task – Create a stored procedure that returns the name and company of a customer.
+--Task – Create a stored procedure that returns the name and company of a customer.
+CREATE OR REPLACE FUNCTION name_and_company(customer integer)
+	RETURNS TABLE (firstname VARCHAR, lastname VARCHAR, company VARCHAR) as $x$
+	BEGIN
+		RETURN QUERY SELECT customer.firstname, customer.lastname customer.company
+			FROM customer WHERE customer.customerid = customer;
+	END;
+	$x$ LANGUAGE plpgsql
 
+--5.0 Transactions
+--In this section you will be working with transactions. Transactions are usually nested within a stored procedure. You will also be working with handling errors in your SQL.
+--Task – Create a transaction that given a invoiceId will delete that invoice (There may be constraints that rely on this, find out how to resolve them).
+--Task – Create a transaction nested within a stored procedure that inserts a new record in the Customer table
 
+--6.0 Triggers
+--In this section you will create various kinds of triggers that work when certain DML statements are executed on a table.
+--6.1 AFTER/FOR
+--Task - Create an after insert trigger on the employee table fired after a new record is inserted into the table.
+CREATE TRIGGER after_insert
+    AFTER INSERT ON employee
+    FOR EACH ROW
+    EXECUTE PROCEDURE suppress_redundant_updates_trigger();
 
-5.0 Transactions
-In this section you will be working with transactions. Transactions are usually nested within a stored procedure. You will also be working with handling errors in your SQL.
-Task – Create a transaction that given a invoiceId will delete that invoice (There may be constraints that rely on this, find out how to resolve them).
-Task – Create a transaction nested within a stored procedure that inserts a new record in the Customer table
+--Task – Create an after update trigger on the album table that fires after a row is inserted in the table
+CREATE TRIGGER after_update
+	AFTER UPDATE ON album
+	FOR EACH ROW
+	executed Procedure suppress_redundant_updates_trigger();
 
-6.0 Triggers
-In this section you will create various kinds of triggers that work when certain DML statements are executed on a table.
+--Task – Create an after delete trigger on the customer table that fires after a row is deleted from the table.
+CREATE TRIGGER after_delete
+    AFTER DELETE ON customer
+    FOR EACH ROW
+    EXECUTE PROCEDURE suppress_redundant_updates_trigger();
 
-6.1 AFTER/FOR
-Task - Create an after insert trigger on the employee table fired after a new record is inserted into the table.
-Task – Create an after update trigger on the album table that fires after a row is inserted in the table
-Task – Create an after delete trigger on the customer table that fires after a row is deleted from the table.
-
-
-6.2 INSTEAD OF
-Task – Create an instead of trigger that restricts the deletion of any invoice that is priced over 50 dollars.
-
+--6.2 INSTEAD OF
+--Task – Create an instead of trigger that restricts the deletion of any invoice that is priced over 50 dollars.
+CREATE VIEW invoice as SELECT * FROM invoice;
+CREATE TRIGGER instead_of_delete_trigger
+	INSTEAD OF DELETE ON invoice
+		FOR EACH ROW
+		WHEN (total > 50)
+	EXCUTE PROCEDURE suppress_redundant_updates_trigger();
 
 --7.0 JOINS
 --In this section you will be working with combing various tables through the use of joins. You will work with outer, inner, right, left, cross, and self joins.
-
 --7.1 INNER
 --Task – Create an inner join that joins customers and orders and specifies the name of the customer and the invoiceId.
 Select customer.firstname, customer.lastname, invoice.invoiceid 
@@ -190,9 +238,6 @@ SELECT * FROM album CROSS JOIN artist ORDER BY artist.name;
 --7.5 SELF
 --Task – Perform a self-join on the employee table, joining on the reportsto column.
 SELECT * FROM employee e1 inner Join employee e2 ON e1.employeeid = e2.reportsto;
-
-
-
 
 
 
